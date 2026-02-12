@@ -1,0 +1,63 @@
+name: Label Pull Requests
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  label:
+    name: Auto-label PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Label based on files changed
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+
+      - name: Add size labels
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/xs'
+          xs_max_size: 10
+          s_label: 'size/s'
+          s_max_size: 50
+          m_label: 'size/m'
+          m_max_size: 150
+          l_label: 'size/l'
+          l_max_size: 300
+          xl_label: 'size/xl'
+          fail_if_xl: false
+
+      - name: Label pack type
+        run: |
+          # Check if PR modifies packs
+          if git diff --name-only origin/main...HEAD | grep -q "^packs/"; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "pack"
+          fi
+          
+          # Check if PR modifies recipes
+          if git diff --name-only origin/main...HEAD | grep -q "^recipes/"; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "recipe"
+          fi
+          
+          # Check if PR modifies CMDB
+          if git diff --name-only origin/main...HEAD | grep -q "^cmdb/"; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "cmdb"
+          fi
+          
+          # Check if PR modifies docs
+          if git diff --name-only origin/main...HEAD | grep -q "^docs/"; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "documentation"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

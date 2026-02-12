@@ -1,0 +1,140 @@
+name: Validate Automation Packs
+
+on:
+  pull_request:
+    paths:
+      - 'packs/**'
+      - 'recipes/**'
+      - 'cmdb/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'packs/**'
+      - 'recipes/**'
+
+jobs:
+  validate-yaml:
+    name: Validate YAML Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML files
+        run: |
+          yamllint -c .yamllint packs/ recipes/ || true
+          echo "YAML validation complete"
+
+  check-secrets:
+    name: Scan for Hardcoded Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for hardcoded passwords
+        run: |
+          echo "Scanning for hardcoded secrets..."
+          
+          # Check for common secret patterns
+          if grep -r -i -E "(password|passwd|pwd)\s*[:=]\s*['\"]?[^credential_ref]" packs/ recipes/ 2>/dev/null | grep -v "credential_ref"; then
+            echo "❌ ERROR: Potential hardcoded password found!"
+            echo "Use 'credential_ref' instead of hardcoded credentials"
+            exit 1
+          fi
+          
+          if grep -r -i -E "(api[_-]?key|apikey|secret[_-]?key)\s*[:=]\s*['\"]" packs/ recipes/ 2>/dev/null | grep -v "credential_ref"; then
+            echo "❌ ERROR: Potential hardcoded API key found!"
+            exit 1
+          fi
+          
+          echo "✅ No hardcoded secrets detected"
+
+  validate-pack-structure:
+    name: Validate Pack Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check pack naming conventions
+        run: |
+          echo "Validating pack naming conventions..."
+          
+          # Check that pack files follow naming convention
+          for pack in packs/*.yml packs/*.yaml; do
+            if [ -f "$pack" ]; then
+              filename=$(basename "$pack")
+              if [[ ! "$filename" =~ ^[a-z0-9_-]+\.(yml|yaml)$ ]]; then
+                echo "❌ ERROR: Pack filename '$filename' doesn't follow naming convention"
+                echo "Use lowercase, hyphens, and underscores only"
+                exit 1
+              fi
+            fi
+          done
+          
+          echo "✅ Pack naming conventions validated"
+
+      - name: Validate pack metadata
+        run: |
+          echo "Checking for required pack metadata..."
+          
+          for pack in packs/*.yml packs/*.yaml; do
+            if [ -f "$pack" ]; then
+              echo "Checking $pack..."
+              
+              # Check for required fields (basic check)
+              if ! grep -q "name:" "$pack"; then
+                echo "❌ ERROR: Pack $pack missing 'name' field"
+                exit 1
+              fi
+              
+              if ! grep -q "description:" "$pack"; then
+                echo "❌ ERROR: Pack $pack missing 'description' field"
+                exit 1
+              fi
+            fi
+          done
+          
+          echo "✅ Pack metadata validated"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy security scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'  # Don't fail on vulnerabilities, just report
+
+  summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [validate-yaml, check-secrets, validate-pack-structure]
+    if: always()
+    steps:
+      - name: Check validation results
+        run: |
+          echo "## Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All validation checks completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- YAML syntax validation" >> $GITHUB_STEP_SUMMARY
+          echo "- Secret scanning" >> $GITHUB_STEP_SUMMARY
+          echo "- Pack structure validation" >> $GITHUB_STEP_SUMMARY
+

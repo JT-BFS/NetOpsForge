@@ -1,0 +1,9 @@
+{
+  "version": "0.2",
+  "observe_requires_ticket": false,
+  "execute_requires": {
+    "servicenow_ticket": true,
+    "explicit_yes": true,
+    "cmdb_target_tag": "allow_execute"
+  }
+}

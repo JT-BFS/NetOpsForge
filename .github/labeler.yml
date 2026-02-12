@@ -1,0 +1,34 @@
+# Labeler configuration for NetOpsForge PRs
+
+pack:
+  - changed-files:
+    - any-glob-to-any-file: 'packs/**'
+
+recipe:
+  - changed-files:
+    - any-glob-to-any-file: 'recipes/**'
+
+cmdb:
+  - changed-files:
+    - any-glob-to-any-file: 'cmdb/**'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: 
+      - 'docs/**'
+      - '*.md'
+
+policy:
+  - changed-files:
+    - any-glob-to-any-file: 'policy/**'
+
+github-actions:
+  - changed-files:
+    - any-glob-to-any-file: '.github/**'
+
+security:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'policy/**'
+      - 'cmdb/credentials/**'
+

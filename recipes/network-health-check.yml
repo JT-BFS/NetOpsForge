@@ -1,0 +1,182 @@
+---
+# NetOpsForge Recipe
+# Recipe: Network Health Check
+# Version: 1.0.0
+# Author: NetOps Team
+# Last Updated: 2026-02-12
+
+metadata:
+  name: network-health-check
+  display_name: "Network Health Check Runbook"
+  description: "Comprehensive health check for network infrastructure"
+  version: "1.0.0"
+  category: monitoring
+  operation_type: read
+  requires_ticket: false
+  estimated_duration_minutes: 15
+  tags:
+    - health-check
+    - monitoring
+    - runbook
+
+# Recipe overview
+overview: |
+  This recipe performs a comprehensive health check of network infrastructure:
+  1. Check interface status on all core routers
+  2. Verify BGP neighbor states
+  3. Check CPU and memory utilization
+  4. Validate critical interface descriptions
+  5. Generate summary report
+  
+  This is a READ-ONLY operation and does not require a ServiceNow ticket.
+
+# Prerequisites
+prerequisites:
+  - description: "Access to production network devices"
+    required: true
+  - description: "Cisco readonly credentials configured"
+    required: true
+  - description: "CMDB populated with device inventory"
+    required: true
+
+# Steps in this recipe
+steps:
+  - step: 1
+    name: "Check Core Router Interfaces"
+    description: "Verify interface status on all core routers"
+    pack: cisco-interface-status
+    targets:
+      cmdb_query:
+        device_role: core-router
+        tags:
+          - production
+    expected_duration_seconds: 120
+    on_failure: continue
+    
+  - step: 2
+    name: "Verify BGP Neighbors"
+    description: "Check BGP neighbor states"
+    pack: cisco-bgp-neighbor-check
+    targets:
+      cmdb_query:
+        device_role: core-router
+        bgp_enabled: true
+    expected_duration_seconds: 60
+    on_failure: continue
+    
+  - step: 3
+    name: "Check Device Resources"
+    description: "Monitor CPU and memory utilization"
+    pack: cisco-resource-check
+    targets:
+      cmdb_query:
+        device_type: 
+          - router
+          - switch
+        tags:
+          - production
+    expected_duration_seconds: 90
+    on_failure: continue
+    
+  - step: 4
+    name: "Validate Interface Descriptions"
+    description: "Ensure critical interfaces have proper descriptions"
+    pack: cisco-interface-description-check
+    targets:
+      cmdb_query:
+        device_role: core-router
+    validation:
+      check_description_format: true
+      require_description_on_uplinks: true
+    expected_duration_seconds: 60
+    on_failure: log_warning
+
+# Aggregation and reporting
+reporting:
+  generate_summary: true
+  summary_format: markdown
+  summary_sections:
+    - section: "Interface Health"
+      include:
+        - total_interfaces
+        - interfaces_up
+        - interfaces_down
+        - err_disabled_count
+        
+    - section: "BGP Status"
+      include:
+        - total_bgp_neighbors
+        - neighbors_established
+        - neighbors_down
+        
+    - section: "Resource Utilization"
+      include:
+        - avg_cpu_utilization
+        - max_cpu_utilization
+        - avg_memory_utilization
+        - devices_over_threshold
+        
+  thresholds:
+    cpu_warning: 70
+    cpu_critical: 85
+    memory_warning: 75
+    memory_critical: 90
+    
+  output_file: "./reports/health-check-{timestamp}.md"
+  
+  # Auto-create Linear issue if thresholds exceeded
+  create_linear_issue_on_threshold: true
+  linear_issue_template:
+    title: "Network Health Check Alert - {timestamp}"
+    description: |
+      Automated health check detected issues:
+      {summary}
+    labels:
+      - network-health
+      - automated-alert
+    priority: high
+
+# Notifications
+notifications:
+  on_completion:
+    enabled: true
+    message: "Network health check completed successfully"
+    
+  on_critical_findings:
+    enabled: true
+    message: "Critical issues detected during health check"
+    create_linear_issue: true
+
+# Scheduling (optional)
+schedule:
+  enabled: false
+  cron: "0 */6 * * *"  # Every 6 hours
+  timezone: "America/New_York"
+
+# Usage examples
+examples:
+  - name: "Run full health check"
+    description: "Execute complete health check on all production devices"
+    command: |
+      netopsforge run recipe network-health-check
+      
+  - name: "Run with Augment"
+    description: "Ask Augment to run the health check"
+    command: |
+      Ask: "Run the network health check recipe"
+      
+  - name: "Run on specific site"
+    description: "Health check for specific datacenter"
+    command: |
+      netopsforge run recipe network-health-check --site DC1
+
+# Linear integration
+linear_integration:
+  track_execution: true
+  create_issue_on_run: false
+  create_issue_on_error: true
+  issue_project: "Network Operations"
+  issue_labels:
+    - health-check
+    - automation
+

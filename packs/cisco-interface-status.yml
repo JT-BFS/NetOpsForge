@@ -1,0 +1,167 @@
+---
+# NetOpsForge Automation Pack
+# Pack: Cisco Interface Status Check
+# Version: 1.0.0
+# Author: NetOps Team
+# Last Updated: 2026-02-12
+
+metadata:
+  name: cisco-interface-status
+  display_name: "Cisco Interface Status Check"
+  description: "Retrieve and parse interface status from Cisco IOS/IOS-XE devices"
+  version: "1.0.0"
+  category: monitoring
+  vendor: cisco
+  platforms:
+    - ios
+    - ios-xe
+  operation_type: read  # read | write
+  requires_ticket: false
+  tags:
+    - interfaces
+    - health-check
+    - monitoring
+
+# Execution parameters
+execution:
+  mode: observe  # observe | execute
+  timeout_seconds: 30
+  retry_count: 2
+  retry_delay_seconds: 5
+
+# Target device selection
+targets:
+  # Targets can be specified by:
+  # - cmdb_query: Query CMDB for matching devices
+  # - device_list: Explicit list of devices
+  # - device_group: Pre-defined group from CMDB
+  
+  cmdb_query:
+    device_type: router
+    vendor: cisco
+    platform: 
+      - ios
+      - ios-xe
+    tags:
+      - production
+      - allow_execute
+
+# Authentication
+authentication:
+  method: credential_ref  # Never hardcode credentials!
+  credential_ref: "cisco_readonly"  # Reference to Windows Credential Manager
+  # The actual credential is stored in Windows Credential Manager as:
+  # Target: NetOpsForge/cisco_readonly
+  # Username: <actual username>
+  # Password: <actual password>
+
+# Commands to execute
+commands:
+  - name: show_interfaces_status
+    description: "Get interface status summary"
+    command: "show interfaces status"
+    parser: textfsm  # textfsm | regex | raw
+    parser_template: "cisco_ios_show_interfaces_status.textfsm"
+    
+  - name: show_interfaces_description
+    description: "Get interface descriptions"
+    command: "show interfaces description"
+    parser: textfsm
+    parser_template: "cisco_ios_show_interfaces_description.textfsm"
+
+# Output handling
+output:
+  format: json  # json | yaml | text | table
+  save_to_file: true
+  file_path: "./output/interface-status-{timestamp}.json"
+  include_metadata: true
+  
+  # Fields to extract and return
+  fields:
+    - interface
+    - status
+    - vlan
+    - duplex
+    - speed
+    - type
+    - description
+
+# Health checks and validation
+validation:
+  # Check for expected conditions
+  checks:
+    - name: interfaces_up
+      description: "Verify critical interfaces are up"
+      condition: "status == 'connected'"
+      severity: warning
+      
+    - name: no_err_disabled
+      description: "Check for err-disabled interfaces"
+      condition: "status != 'err-disabled'"
+      severity: critical
+
+# Error handling
+error_handling:
+  on_connection_failure:
+    action: retry
+    max_retries: 3
+    
+  on_command_failure:
+    action: log_and_continue
+    
+  on_parsing_failure:
+    action: return_raw
+    fallback_format: text
+
+# Logging and audit
+logging:
+  level: info  # debug | info | warning | error
+  log_commands: true
+  log_output: true
+  log_to_file: true
+  log_file_path: "./logs/packs/{pack_name}-{timestamp}.log"
+
+# Notifications (optional)
+notifications:
+  on_completion:
+    enabled: false
+    
+  on_error:
+    enabled: true
+    channels:
+      - type: linear
+        severity: high
+        
+# Usage examples
+examples:
+  - name: "Check all production routers"
+    description: "Run interface status check on all production Cisco routers"
+    command: |
+      netopsforge run pack cisco-interface-status --target-group production-routers
+      
+  - name: "Check specific device"
+    description: "Run on a single device"
+    command: |
+      netopsforge run pack cisco-interface-status --device core-rtr-01
+      
+  - name: "Export to CSV"
+    description: "Run and export results to CSV"
+    command: |
+      netopsforge run pack cisco-interface-status --output-format csv --output-file interfaces.csv
+
+# Dependencies
+dependencies:
+  python_packages:
+    - netmiko>=4.0.0
+    - textfsm>=1.1.0
+    
+  external_tools: []
+
+# Metadata for Linear integration
+linear_integration:
+  auto_create_issue_on_error: true
+  issue_labels:
+    - network-automation
+    - interface-monitoring
+  issue_priority: medium
+
