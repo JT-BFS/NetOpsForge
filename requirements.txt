@@ -1,0 +1,35 @@
+# NetOpsForge - Network Operations Automation Platform
+# Python Dependencies
+
+# Core Dependencies
+pyyaml>=6.0.1              # YAML parsing for packs, recipes, CMDB
+click>=8.1.7               # CLI framework
+colorama>=0.4.6            # Cross-platform colored terminal output
+python-dotenv>=1.0.0       # Environment variable management
+
+# Network Automation
+netmiko>=4.3.0             # Multi-vendor SSH connections
+textfsm>=1.1.3             # Template-based parsing for network output
+napalm>=4.1.0              # Network Automation and Programmability Abstraction Layer
+
+# Windows Integration
+pywin32>=306               # Windows Credential Manager integration (Windows only)
+
+# API Integrations
+requests>=2.31.0           # HTTP client for APIs (also used for Linear API)
+
+# Data Processing
+jinja2>=3.1.3              # Template engine for reports
+tabulate>=0.9.0            # Pretty-print tabular data
+pandas>=2.2.0              # Data analysis and CSV handling
+
+# Logging and Monitoring
+structlog>=24.1.0          # Structured logging
+
+# Development Dependencies (optional)
+pytest>=8.0.0              # Testing framework
+pytest-cov>=4.1.0          # Test coverage
+black>=24.1.0              # Code formatter
+flake8>=7.0.0              # Linting
+mypy>=1.8.0                # Type checking
+
