@@ -98,7 +98,7 @@ netopsforge run pack cisco-interface-status --device core-rtr-01
 - Log all operations
 
 ### ❌ DON'T:
-- Hardcode passwords or API keys
+- Hardcode credentials or API keys (use credential_ref)
 - Skip validation for write operations
 - Bypass ticket requirements
 - Disable logging
