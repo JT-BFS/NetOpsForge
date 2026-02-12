@@ -48,9 +48,10 @@ output:
 
 ## 📚 Available Packs
 
-| Pack Name | Description | Type | Vendor |
-|-----------|-------------|------|--------|
-| `cisco-interface-status` | Check interface status | READ | Cisco |
+| Pack Name | Description | Type | Vendor | Documentation |
+|-----------|-------------|------|--------|---------------|
+| `cisco-ios-health-check` | Comprehensive health check (connectivity, version, CPU, memory, interfaces) | READ | Cisco | [📖 Docs](../docs/packs/cisco-ios-health-check.md) |
+| `cisco-interface-status` | Check interface status | READ | Cisco | - |
 
 ## 🚀 Using a Pack
 
@@ -97,7 +98,7 @@ netopsforge run pack cisco-interface-status --device core-rtr-01
 - Log all operations
 
 ### ❌ DON'T:
-- Hardcode passwords or API keys
+- Hardcode credentials or API keys (use credential_ref)
 - Skip validation for write operations
 - Bypass ticket requirements
 - Disable logging

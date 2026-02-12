@@ -53,7 +53,7 @@ authentication:
   # The actual credential is stored in Windows Credential Manager as:
   # Target: NetOpsForge/cisco_readonly
   # Username: <actual username>
-  # Password: <actual password>
+  # Secret: <actual password>
 
 # Commands to execute
 commands:
