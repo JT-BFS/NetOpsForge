@@ -1,0 +1,365 @@
+---
+# NetOpsForge Automation Pack
+# Pack: Cisco IOS Health Check
+# Version: 1.0.0
+# Author: NetOps Team
+# Last Updated: 2026-02-12
+
+metadata:
+  name: cisco-ios-health-check
+  display_name: "Cisco IOS/IOS-XE Health Check"
+  description: "Comprehensive health check for Cisco IOS/IOS-XE devices including connectivity, version, interfaces, and resource utilization"
+  version: "1.0.0"
+  category: monitoring
+  vendor: cisco
+  platforms:
+    - ios
+    - ios-xe
+  operation_type: read
+  requires_ticket: false
+  tags:
+    - health-check
+    - monitoring
+    - diagnostics
+    - cisco
+
+# Execution parameters
+execution:
+  mode: observe  # observe | execute
+  timeout_seconds: 60
+  retry_count: 2
+  retry_delay_seconds: 5
+  parallel_execution: false
+  
+# Target selection
+targets:
+  # Targets can be specified via CMDB query or explicit list
+  cmdb_query:
+    vendor: cisco
+    platform:
+      - ios
+      - ios-xe
+    tags:
+      - production
+  
+  # Alternative: explicit device list
+  # devices:
+  #   - core-rtr-01
+  #   - core-rtr-02
+
+# Authentication
+authentication:
+  credential_ref: "cisco_readonly"  # Reference to Windows Credential Manager
+  connection_type: ssh
+  port: 22
+  enable_mode: false  # Don't need enable for read-only commands
+
+# Pre-execution checks
+pre_checks:
+  - name: verify_connectivity
+    description: "Verify device is reachable via ICMP"
+    type: ping
+    timeout_seconds: 5
+    required: true
+    
+  - name: verify_ssh_port
+    description: "Verify SSH port is open"
+    type: tcp_port_check
+    port: 22
+    timeout_seconds: 5
+    required: true
+
+# Commands to execute
+commands:
+  - name: show_version
+    description: "Get device version and hardware information"
+    command: "show version"
+    parser: textfsm
+    parser_template: "cisco_ios_show_version.textfsm"
+    timeout_seconds: 10
+    
+  - name: show_inventory
+    description: "Get hardware inventory"
+    command: "show inventory"
+    parser: textfsm
+    parser_template: "cisco_ios_show_inventory.textfsm"
+    timeout_seconds: 10
+    
+  - name: show_processes_cpu
+    description: "Get CPU utilization"
+    command: "show processes cpu | include CPU"
+    parser: regex
+    parser_pattern: 'CPU utilization.*five seconds: (\d+)%.*one minute: (\d+)%.*five minutes: (\d+)%'
+    timeout_seconds: 10
+    
+  - name: show_memory_statistics
+    description: "Get memory utilization"
+    command: "show memory statistics"
+    parser: regex
+    parser_pattern: 'Processor.*?(\d+)\s+(\d+)\s+(\d+)'
+    timeout_seconds: 10
+    
+  - name: show_interfaces_status
+    description: "Get interface status summary"
+    command: "show interfaces status"
+    parser: textfsm
+    parser_template: "cisco_ios_show_interfaces_status.textfsm"
+    timeout_seconds: 15
+    
+  - name: show_interfaces_description
+    description: "Get interface descriptions"
+    command: "show interfaces description"
+    parser: textfsm
+    parser_template: "cisco_ios_show_interfaces_description.textfsm"
+    timeout_seconds: 15
+    
+  - name: show_logging
+    description: "Get recent log messages"
+    command: "show logging | include %"
+    parser: raw
+    timeout_seconds: 10
+    max_lines: 50  # Limit output to last 50 log lines
+
+# Output handling
+output:
+  format: json  # json | yaml | text | table
+  save_to_file: true
+  file_path: "./output/health-check/{hostname}-{timestamp}.json"
+  include_metadata: true
+  include_raw_output: false  # Don't include raw command output in JSON
+  
+  # Summary fields to extract
+  summary_fields:
+    device_info:
+      - hostname
+      - version
+      - uptime
+      - model
+      - serial_number
+    resource_utilization:
+      - cpu_5sec
+      - cpu_1min
+      - cpu_5min
+      - memory_used_percent
+    interface_summary:
+      - total_interfaces
+      - interfaces_up
+      - interfaces_down
+      - err_disabled_count
+
+# Health checks and validation
+validation:
+  checks:
+    - name: cpu_utilization_normal
+      description: "CPU utilization under 80%"
+      field: cpu_5min
+      condition: "< 80"
+      severity: warning
+      
+    - name: cpu_utilization_critical
+      description: "CPU utilization under 95%"
+      field: cpu_5min
+      condition: "< 95"
+      severity: critical
+
+    - name: memory_utilization_normal
+      description: "Memory utilization under 85%"
+      field: memory_used_percent
+      condition: "< 85"
+      severity: warning
+
+    - name: memory_utilization_critical
+      description: "Memory utilization under 95%"
+      field: memory_used_percent
+      condition: "< 95"
+      severity: critical
+
+    - name: no_err_disabled_interfaces
+      description: "No interfaces in err-disabled state"
+      field: err_disabled_count
+      condition: "== 0"
+      severity: critical
+
+    - name: critical_interfaces_up
+      description: "All critical interfaces are up"
+      field: interfaces_down
+      condition: "== 0"
+      severity: warning
+      filter: "description contains 'CRITICAL'"
+
+# Error handling
+error_handling:
+  on_connection_failure:
+    action: retry
+    max_retries: 3
+    log_error: true
+    create_linear_issue: false
+
+  on_command_failure:
+    action: log_and_continue
+    log_error: true
+
+  on_parsing_failure:
+    action: return_raw
+    fallback_format: text
+    log_warning: true
+
+  on_validation_failure:
+    action: log_and_report
+    create_linear_issue: true
+    severity_threshold: critical  # Only create issue for critical failures
+
+# Logging and audit
+logging:
+  level: info  # debug | info | warning | error
+  log_commands: true
+  log_output: true
+  log_to_file: true
+  log_file_path: "./logs/packs/{pack_name}/{hostname}-{timestamp}.log"
+
+  # Audit trail
+  audit:
+    enabled: true
+    include_user: true
+    include_timestamp: true
+    include_device: true
+    include_commands: true
+
+# Notifications
+notifications:
+  on_completion:
+    enabled: true
+    message: "Health check completed for {hostname}"
+
+  on_error:
+    enabled: true
+    message: "Health check failed for {hostname}: {error_message}"
+    channels:
+      - type: linear
+        severity: high
+        create_issue: true
+
+  on_validation_failure:
+    enabled: true
+    message: "Health check validation failed for {hostname}"
+    severity_threshold: critical
+    channels:
+      - type: linear
+        create_issue: true
+
+# Post-execution actions
+post_actions:
+  - name: generate_summary_report
+    description: "Generate markdown summary report"
+    type: report
+    template: health_check_summary
+    output_file: "./reports/health-check-{hostname}-{timestamp}.md"
+
+  - name: update_cmdb
+    description: "Update CMDB with device info"
+    type: cmdb_update
+    fields:
+      - version
+      - uptime
+      - serial_number
+      - last_health_check: "{timestamp}"
+
+# Linear integration
+linear_integration:
+  enabled: true
+  track_execution: true
+  create_issue_on_run: false
+  create_issue_on_error: true
+  create_issue_on_validation_failure: true
+  issue_project: "Network Operations"
+  issue_labels:
+    - health-check
+    - automation
+    - cisco
+  issue_priority: medium
+  issue_template: |
+    ## Health Check Alert: {hostname}
+
+    **Device:** {hostname} ({management_ip})
+    **Timestamp:** {timestamp}
+    **Status:** {status}
+
+    ### Issues Detected:
+    {validation_failures}
+
+    ### Resource Utilization:
+    - CPU (5min): {cpu_5min}%
+    - Memory Used: {memory_used_percent}%
+
+    ### Interface Status:
+    - Total: {total_interfaces}
+    - Up: {interfaces_up}
+    - Down: {interfaces_down}
+    - Err-Disabled: {err_disabled_count}
+
+    ### Recommended Actions:
+    {recommended_actions}
+
+# Usage examples
+examples:
+  - name: "Run health check on all production routers"
+    description: "Execute health check on all production Cisco routers"
+    command: |
+      netopsforge run pack cisco-ios-health-check
+
+  - name: "Run health check on specific device"
+    description: "Run on a single device"
+    command: |
+      netopsforge run pack cisco-ios-health-check --device core-rtr-01
+
+  - name: "Run with Augment"
+    description: "Ask Augment to run the health check"
+    command: |
+      Ask: "Run a health check on core-rtr-01"
+
+  - name: "Run and export to CSV"
+    description: "Run and export results to CSV format"
+    command: |
+      netopsforge run pack cisco-ios-health-check --output-format csv --output-file health-check.csv
+
+  - name: "Run with custom thresholds"
+    description: "Override default validation thresholds"
+    command: |
+      netopsforge run pack cisco-ios-health-check --set cpu_threshold=90 --set memory_threshold=90
+
+# Dependencies
+dependencies:
+  textfsm_templates:
+    - cisco_ios_show_version.textfsm
+    - cisco_ios_show_inventory.textfsm
+    - cisco_ios_show_interfaces_status.textfsm
+    - cisco_ios_show_interfaces_description.textfsm
+
+  python_libraries:
+    - netmiko>=4.0.0
+    - textfsm>=1.1.0
+    - pyyaml>=6.0
+
+# Testing
+testing:
+  test_mode_available: true
+  test_devices:
+    - test-rtr-01
+  mock_data_available: true
+  mock_data_path: "./tests/mock_data/cisco_ios_health_check.json"
+
+# Metadata for pack management
+pack_metadata:
+  author: "NetOps Team"
+  maintainer: "netops@example.com"
+  license: "MIT"
+  repository: "https://github.com/JT-BFS/NetOpsForge"
+  documentation: "https://github.com/JT-BFS/NetOpsForge/blob/main/docs/packs/cisco-ios-health-check.md"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-12"
+      changes:
+        - "Initial release"
+        - "Comprehensive health check implementation"
+        - "Linear integration support"
+
