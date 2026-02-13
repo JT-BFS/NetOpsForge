@@ -20,15 +20,25 @@ class Config:
     PACKS_PATH = BASE_DIR / os.getenv("PACKS_PATH", "packs")
     RECIPES_PATH = BASE_DIR / os.getenv("RECIPES_PATH", "recipes")
     LOGS_DIR = BASE_DIR / "logs"
-    
+
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = BASE_DIR / os.getenv("LOG_FILE", "logs/netopsforge.log")
-    
+
+    # CMDB Source Configuration
+    CMDB_SOURCE = os.getenv("CMDB_SOURCE", "yaml")  # yaml, solarwinds, servicenow, database
+
+    # SolarWinds Orion Integration
+    SOLARWINDS_HOSTNAME = os.getenv("SOLARWINDS_HOSTNAME")
+    SOLARWINDS_USERNAME = os.getenv("SOLARWINDS_USERNAME")
+    SOLARWINDS_PASSWORD = os.getenv("SOLARWINDS_PASSWORD")
+    SOLARWINDS_VERIFY_SSL = os.getenv("SOLARWINDS_VERIFY_SSL", "true").lower() == "true"
+    SOLARWINDS_CACHE_TTL = int(os.getenv("SOLARWINDS_CACHE_TTL", "300"))  # 5 minutes
+
     # Linear Integration
     LINEAR_API_KEY = os.getenv("LINEAR_API_KEY")
     LINEAR_TEAM_ID = os.getenv("LINEAR_TEAM_ID")
-    
+
     # ServiceNow Integration
     SERVICENOW_INSTANCE = os.getenv("SERVICENOW_INSTANCE")
     SERVICENOW_USERNAME = os.getenv("SERVICENOW_USERNAME")
