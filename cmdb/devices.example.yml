@@ -1,0 +1,185 @@
+---
+# NetOpsForge CMDB - Device Inventory EXAMPLE
+#
+# ⚠️  THIS IS AN EXAMPLE TEMPLATE - DO NOT USE AS-IS!
+#
+# To use this file:
+# 1. Copy this file to devices.yml:
+#    Copy-Item cmdb\devices.example.yml cmdb\devices.yml
+#
+# 2. Edit devices.yml with YOUR real network devices
+#
+# 3. NEVER commit devices.yml to Git (it's automatically git-ignored)
+#
+# This example shows the structure and available fields.
+# Replace all example data with your actual device information.
+#
+# Version: 1.0.0
+
+# Device inventory
+devices:
+  # Core Routers
+  - hostname: core-rtr-01
+    management_ip: 10.0.1.1
+    device_type: router
+    device_role: core-router
+    vendor: cisco
+    platform: ios-xe
+    model: ASR1001-X
+    site: DC1
+    rack: R01
+    serial_number: FOC1234ABCD
+    tags:
+      - production
+      - core
+      - allow_execute
+    credential_ref: cisco_readonly
+    bgp_enabled: true
+    ospf_enabled: true
+    
+  - hostname: core-rtr-02
+    management_ip: 10.0.1.2
+    device_type: router
+    device_role: core-router
+    vendor: cisco
+    platform: ios-xe
+    model: ASR1001-X
+    site: DC1
+    rack: R02
+    serial_number: FOC1234EFGH
+    tags:
+      - production
+      - core
+      - allow_execute
+    credential_ref: cisco_readonly
+    bgp_enabled: true
+    ospf_enabled: true
+
+  # Distribution Switches
+  - hostname: dist-sw-01
+    management_ip: 10.0.2.1
+    device_type: switch
+    device_role: distribution-switch
+    vendor: cisco
+    platform: nxos
+    model: Nexus 9300
+    site: DC1
+    rack: R03
+    serial_number: FOC5678IJKL
+    tags:
+      - production
+      - distribution
+      - allow_execute
+    credential_ref: cisco_readonly
+    vpc_enabled: true
+    
+  - hostname: dist-sw-02
+    management_ip: 10.0.2.2
+    device_type: switch
+    device_role: distribution-switch
+    vendor: cisco
+    platform: nxos
+    model: Nexus 9300
+    site: DC1
+    rack: R04
+    serial_number: FOC5678MNOP
+    tags:
+      - production
+      - distribution
+      - allow_execute
+    credential_ref: cisco_readonly
+    vpc_enabled: true
+
+  # Access Switches (Example)
+  - hostname: access-sw-01
+    management_ip: 10.0.3.1
+    device_type: switch
+    device_role: access-switch
+    vendor: cisco
+    platform: ios
+    model: Catalyst 9300
+    site: DC1
+    rack: R05
+    serial_number: FOC9012QRST
+    tags:
+      - production
+      - access
+      - allow_execute
+    credential_ref: cisco_readonly
+
+# Device groups for bulk operations
+device_groups:
+  production-routers:
+    description: "All production core routers"
+    query:
+      device_type: router
+      tags:
+        - production
+        
+  production-switches:
+    description: "All production switches"
+    query:
+      device_type: switch
+      tags:
+        - production
+        
+  core-infrastructure:
+    description: "Core routers and distribution switches"
+    query:
+      device_role:
+        - core-router
+        - distribution-switch
+      tags:
+        - production
+        
+  dc1-devices:
+    description: "All devices in DC1"
+    query:
+      site: DC1
+      
+  bgp-routers:
+    description: "All BGP-enabled routers"
+    query:
+      bgp_enabled: true
+
+# Sites/Locations
+sites:
+  - name: DC1
+    description: "Primary Datacenter"
+    location: "New York, NY"
+    timezone: "America/New_York"
+    
+  - name: DC2
+    description: "Secondary Datacenter"
+    location: "Chicago, IL"
+    timezone: "America/Chicago"
+
+# Credential references
+# Actual credentials stored in Windows Credential Manager
+# Format: NetOpsForge/{credential_ref}
+credentials:
+  - name: cisco_readonly
+    description: "Cisco read-only credentials"
+    type: username_password
+    credential_manager_target: "NetOpsForge/cisco_readonly"
+    scope:
+      - vendor: cisco
+        privilege_level: 1
+        
+  - name: cisco_readwrite
+    description: "Cisco read-write credentials"
+    type: username_password
+    credential_manager_target: "NetOpsForge/cisco_readwrite"
+    scope:
+      - vendor: cisco
+        privilege_level: 15
+    requires_ticket: true
+    
+  - name: arista_api
+    description: "Arista eAPI credentials"
+    type: api_key
+    credential_manager_target: "NetOpsForge/arista_api"
+    scope:
+      - vendor: arista
+        api_type: eapi
+
