@@ -2,6 +2,37 @@
 
 Configuration Management Database for network device inventory and credentials.
 
+## 🔒 **IMPORTANT: Keep Your CMDB Private!**
+
+**Your real `devices.yml` file should NEVER be committed to a public repository!**
+
+This directory contains:
+- ✅ `devices.example.yml` - Template for your device inventory (safe to commit)
+- ✅ `README.md` - This documentation (safe to commit)
+- ❌ `devices.yml` - **YOUR REAL INVENTORY** (git-ignored, never committed)
+
+### **First-Time Setup:**
+
+1. **Copy the example template:**
+   ```bash
+   Copy-Item cmdb\devices.example.yml cmdb\devices.yml
+   ```
+
+2. **Edit `devices.yml` with your real devices:**
+   - Replace example IPs with your actual management IPs
+   - Update hostnames, platforms, and credentials
+   - Add/remove devices as needed
+
+3. **Verify it's git-ignored:**
+   ```bash
+   git status
+   # devices.yml should NOT appear in the list
+   ```
+
+4. **Never commit `devices.yml`:**
+   - The `.gitignore` file prevents this automatically
+   - Only `devices.example.yml` should be in the repo
+
 ## 📋 Overview
 
 The CMDB contains:
@@ -14,9 +45,9 @@ The CMDB contains:
 
 ```
 cmdb/
-├── devices.yml          # Main device inventory
-├── credentials.yml      # Credential reference definitions
-└── README.md           # This file
+├── devices.example.yml  # Template (committed to repo)
+├── devices.yml          # YOUR REAL INVENTORY (git-ignored!)
+└── README.md            # This file
 ```
 
 ## 🔧 Device Schema
@@ -132,7 +163,7 @@ targets:
 
 ## 📝 Adding New Devices
 
-1. **Edit `devices.yml`**:
+1. **Edit your local `devices.yml`** (NOT the example file):
    ```yaml
    - hostname: new-device-01
      management_ip: 10.0.0.10
@@ -149,10 +180,13 @@ targets:
    yamllint cmdb/devices.yml
    ```
 
-3. **Submit PR**:
-   - Create feature branch
-   - Commit changes
-   - Open PR with description
+3. **Test connectivity**:
+   ```bash
+   netopsforge list devices
+   # Verify your new device appears
+   ```
+
+**Note:** Since `devices.yml` is git-ignored, you don't submit PRs for device changes. Each team member maintains their own local copy.
 
 ## 🔒 Security Best Practices
 

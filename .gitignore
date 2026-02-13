@@ -10,6 +10,12 @@ secrets.yml
 .env
 .env.local
 
+# CMDB - Keep your real device inventory private!
+cmdb/devices.yml
+cmdb/*.yml
+!cmdb/devices.example.yml
+!cmdb/README.md
+
 # Output files
 output/
 logs/
